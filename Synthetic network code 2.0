@@ -1,0 +1,61 @@
+import networkx as nx
+import random
+from tqdm import tqdm
+
+def collect_paths(G, source, target, num_paths=1000, max_steps=100, random_seed=None):
+    """
+    Perform weighted random walks from source to target on a directed graph.
+
+    Parameters:
+    ----------
+    G : networkx.DiGraph
+        A directed graph with edge weights.
+    source : node
+        Start node.
+    target : node
+        Target node to stop the walk.
+    num_paths : int
+        Number of paths to collect.
+    max_steps : int
+        Max steps per walk to avoid infinite loops.
+    random_seed : int or None
+        Optional seed for reproducibility.
+
+    Returns:
+    -------
+    paths : list of lists
+        A list of successful paths from source to target.
+    """
+    if random_seed is not None:
+        rng = random.Random(random_seed)
+    else:
+        rng = random
+
+    paths = []
+
+    for _ in range(num_paths):
+        path = [source]
+        current = source
+        steps = 0
+
+        while current != target and steps < max_steps:
+            neighbors = list(G.successors(current))
+            if not neighbors:
+                break  # Dead end
+            weights = [G[current][nbr].get('weight', 1.0) for nbr in neighbors]
+            current = rng.choices(neighbors, weights=weights, k=1)[0]
+            path.append(current)
+            steps += 1
+
+        if path[-1] == target:
+            paths.append(path)
+
+    return paths
+
+
+# Collect all-to-all paths efficiently
+paths = dict()
+for source in tqdm(G.nodes(), desc="Processing sources"):
+    for target in G.nodes():
+        if source != target and nx.has_path(G, source, target):
+            paths[(source, target)] = collect_paths(G, source, target, num_paths=1000, max_steps=100)
